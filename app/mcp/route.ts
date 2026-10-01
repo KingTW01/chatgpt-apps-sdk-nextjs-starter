@@ -2,9 +2,26 @@ import { baseURL } from "@/baseUrl";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 
+const HTML_CACHE_TTL_MS = 60_000;
+
+let homeHtmlCache: { html: string; fetchedAt: number } | null = null;
+
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
+  const now = Date.now();
+
+  if (homeHtmlCache && now - homeHtmlCache.fetchedAt < HTML_CACHE_TTL_MS) {
+    return homeHtmlCache.html;
+  }
+
   const result = await fetch(`${baseUrl}${path}`);
-  return await result.text();
+
+  if (!result.ok) {
+    throw new Error(`Failed to fetch ${path}: ${result.status} ${result.statusText}`);
+  }
+
+  const html = await result.text();
+  homeHtmlCache = { html, fetchedAt: now };
+  return html;
 };
 
 type ContentWidget = {
